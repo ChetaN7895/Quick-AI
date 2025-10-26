@@ -6,14 +6,19 @@ import { resumeReview } from "../controllers/aiController.js";
 
 const router = express.Router();
 
+// ✅ Use /tmp in production (Vercel/Render safe)
+const isProduction = process.env.NODE_ENV === "production";
+const uploadDir = isProduction
+  ? "/tmp/uploads"
+  : path.join(process.cwd(), "uploads");
+
 // ✅ Create uploads directory if not exists
-const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
   console.log("✅ Upload directory created at:", uploadDir);
 }
 
-// ✅ Configure multer storage (absolute path)
+// ✅ Configure multer storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadDir);
@@ -27,7 +32,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 5 * 1024 * 1024, // 5MB
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === "application/pdf") {
