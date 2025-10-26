@@ -4,9 +4,15 @@ import { clerkClient } from "@clerk/express";
 import { v2 as cloudinary } from "cloudinary";
 import connectCloudinary from "../config/cloudinary.js";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import axios from "axios";
 import FormData from "form-data";
 import pdf from "pdf-parse";
+
+// ✅ Initialize paths (for safe absolute resolution)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ✅ Connect Cloudinary
 connectCloudinary();
@@ -213,6 +219,10 @@ export const removeImageBackground = async (req, res) => {
       });
     }
 
+    if (!fs.existsSync(image.path)) {
+      return res.json({ success: false, message: "Uploaded file not found." });
+    }
+
     const uploadResult = await cloudinary.uploader.upload(image.path, {
       transformation: [{ effect: "background_removal" }],
     });
@@ -225,11 +235,11 @@ export const removeImageBackground = async (req, res) => {
       RETURNING *;
     `;
 
-    fs.unlinkSync(image.path);
+    if (fs.existsSync(image.path)) fs.unlinkSync(image.path);
     return res.json({ success: true, content: secure_url, creation: newCreation });
   } catch (error) {
     console.error("removeImageBackground Error:", error.message);
-    if (req.file?.path) fs.unlinkSync(req.file.path);
+    if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     return res.json({ success: false, message: error.message });
   }
 };
@@ -250,6 +260,10 @@ export const removeImageObject = async (req, res) => {
       });
     }
 
+    if (!fs.existsSync(image.path)) {
+      return res.json({ success: false, message: "Uploaded file not found." });
+    }
+
     const uploadResult = await cloudinary.uploader.upload(image.path);
     const public_id = uploadResult.public_id;
 
@@ -264,11 +278,11 @@ export const removeImageObject = async (req, res) => {
       RETURNING *;
     `;
 
-    fs.unlinkSync(image.path);
+    if (fs.existsSync(image.path)) fs.unlinkSync(image.path);
     return res.json({ success: true, content: imageUrl, creation: newCreation });
   } catch (error) {
     console.error("removeImageObject Error:", error.message);
-    if (req.file?.path) fs.unlinkSync(req.file.path);
+    if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     return res.json({ success: false, message: error.message });
   }
 };
@@ -287,8 +301,10 @@ export const resumeReview = async (req, res) => {
       return res.json({ success: false, message: "No resume file uploaded." });
     }
 
-    tempFilePath = resume.path;
+    // ✅ Always use absolute path
+    tempFilePath = path.resolve(resume.path || "");
 
+    // ✅ On Vercel/Render, ensure file is in writable temp dir
     if (!fs.existsSync(tempFilePath)) {
       return res.json({
         success: false,
@@ -312,7 +328,7 @@ export const resumeReview = async (req, res) => {
       });
     }
 
-    // ✅ Extract text from PDF safely
+    // ✅ Safely parse PDF
     const dataBuffer = fs.readFileSync(tempFilePath);
     const pdfData = await pdf(dataBuffer);
 
@@ -336,7 +352,8 @@ ${pdfData.text}
       max_tokens: 1500,
     });
 
-    const content = response.choices?.[0]?.message?.content || "No review generated.";
+    const content =
+      response.choices?.[0]?.message?.content || "No review generated.";
 
     const [newCreation] = await sql`
       INSERT INTO creations (user_id, prompt, content, type)
@@ -344,7 +361,8 @@ ${pdfData.text}
       RETURNING *;
     `;
 
-    fs.unlinkSync(tempFilePath);
+    if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+
     return res.json({
       success: true,
       content,
