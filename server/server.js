@@ -8,48 +8,58 @@ import userRouter from "./routes/userRoutes.js";
 
 const app = express();
 
-(async () => {
-  // ✅ Connect Cloudinary safely
-  await connectCloudinary();
+// ✅ Wrap startup logic to avoid top-level await
+async function startServer() {
+  try {
+    await connectCloudinary();
+    console.log("☁️ Connected to Cloudinary");
 
-  // ✅ Smart CORS setup
-  const allowedOrigins = [
-    "http://localhost:5173",
-    "https://quick-ai.vercel.app"
-  ];
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "https://quick-ai.vercel.app"
+    ];
 
-  app.use(
-    cors({
-      origin: allowedOrigins,
-      credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    })
-  );
+    app.use(
+      cors({
+        origin: allowedOrigins,
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      })
+    );
 
-  app.use(express.json());
-  app.use(clerkMiddleware());
+    app.use(express.json());
+    app.use(clerkMiddleware());
 
-  // Public route
-  app.get("/", (req, res) => res.send("🚀 Server is Live on Vercel & Local!"));
-  app.get("/favicon.ico", (req, res) => res.status(204).end());
+    // Public routes
+    app.get("/", (req, res) =>
+      res.send("🚀 Quick-AI Server is Live (Vercel + Local)")
+    );
+    app.get("/favicon.ico", (req, res) => res.status(204).end());
 
-  // Protected routes
-  app.use("/api/ai", requireAuth(), aiRouter);
-  app.use("/api/user", requireAuth(), userRouter);
+    // Protected routes
+    app.use("/api/ai", requireAuth(), aiRouter);
+    app.use("/api/user", requireAuth(), userRouter);
 
-  // Error handler
-  app.use((err, req, res, next) => {
-    console.error("❌ Server Error:", err);
-    res.status(500).json({ message: "Internal Server Error", error: err.message });
-  });
-
-  // Run locally only
-  if (process.env.VERCEL !== "1") {
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
-      console.log(`✅ Server running locally on port ${PORT}`);
+    // Error handler
+    app.use((err, req, res, next) => {
+      console.error("❌ Server Error:", err);
+      res
+        .status(500)
+        .json({ message: "Internal Server Error", error: err.message });
     });
+
+    // Run locally only
+    if (process.env.VERCEL !== "1") {
+      const PORT = process.env.PORT || 3000;
+      app.listen(PORT, () =>
+        console.log(`✅ Server running locally on port ${PORT}`)
+      );
+    }
+  } catch (err) {
+    console.error("❌ Startup failed:", err);
   }
-})();
+}
+
+startServer();
 
 export default app;
