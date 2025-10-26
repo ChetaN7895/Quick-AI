@@ -34,7 +34,7 @@ async function startServer() {
     app.get("/", (req, res) =>
       res.send("🚀 Quick-AI Server is Live (Vercel + Local)")
     );
-    app.get("/favicon.ico", (req, res) => res.status(204).end());
+    // app.get("/favicon.ico", (req, res) => res.status(204).end());
 
     // Protected routes
     app.use("/api/ai", requireAuth(), aiRouter);
