@@ -1,38 +1,39 @@
-import express from 'express';
-import cors from 'cors';
-import 'dotenv/config';
-import aiRouter from './routes/aiRoutes.js';
-import { clerkMiddleware, requireAuth } from '@clerk/express'
-import connectCloudinary from './config/cloudinary.js';
-import userRouter from './routes/userRoutes.js';
+import express from "express";
+import cors from "cors";
+import "dotenv/config";
+import aiRouter from "./routes/aiRoutes.js";
+import { clerkMiddleware, requireAuth } from "@clerk/express";
+import connectCloudinary from "./config/cloudinary.js";
+import userRouter from "./routes/userRoutes.js";
 
+const app = express();
 
-const app = express()
+// ✅ Connect to Cloudinary before routes
+await connectCloudinary();
 
-await connectCloudinary()
-
-// ✅ CORS fix
+// ✅ CORS setup
 app.use(
   cors({
-    origin: "http://localhost:5173", // your frontend dev origin
+    origin: [
+      "http://localhost:5173",
+      "https://quick-ai.vercel.app" // replace with your deployed frontend domain
+    ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
 
-// app.use(cors())
-app.use(express.json())
-app.use(clerkMiddleware())
+app.use(express.json());
+app.use(clerkMiddleware());
 
-app.get('/', (req, res) =>res.send('Server is Live!'))
+// ✅ Public route
+app.get("/", (req, res) => res.send("🚀 Backend is Live on Vercel!"));
 
-app.use(requireAuth())
+// ✅ Protected routes
+app.use(requireAuth());
+app.use("/api/ai", aiRouter);
+app.use("/api/user", userRouter);
 
-app.use('/api/ai', aiRouter)
-app.use('/api/user', userRouter)
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, ()=>{
-    console.log("Server is running on port", PORT);
-})
+// ❌ Remove app.listen()
+// ✅ Instead, export the app for Vercel to handle
+export default app;
