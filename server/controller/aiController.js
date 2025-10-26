@@ -298,27 +298,20 @@ export const resumeReview = async (req, res) => {
     const plan = req.plan;
 
     if (!resume) {
-      return res.status(400).json({
-        success: false,
-        message: "No resume file uploaded.",
-      });
+      return res.json({ success: false, message: "No resume file uploaded." });
     }
 
-    // ✅ Always use absolute path (safe on both local and production)
-    tempFilePath = path.resolve(resume.path);
+    // ✅ Always resolve absolute path
+    tempFilePath = path.resolve(resume.path || "");
 
-    // ✅ Log upload path (helps debug)
-    console.log("🧾 Uploaded resume path:", tempFilePath);
-
-    // ✅ Validate that file actually exists before parsing
+    // ✅ Ensure file actually exists
     if (!fs.existsSync(tempFilePath)) {
-      return res.status(400).json({
+      return res.json({
         success: false,
         message: `Uploaded file not found at: ${tempFilePath}`,
       });
     }
 
-    // ✅ Enforce plan restriction
     if (plan !== "premium") {
       fs.unlinkSync(tempFilePath);
       return res.json({
@@ -327,7 +320,6 @@ export const resumeReview = async (req, res) => {
       });
     }
 
-    // ✅ Validate size
     if (resume.size > 5 * 1024 * 1024) {
       fs.unlinkSync(tempFilePath);
       return res.json({
@@ -336,15 +328,17 @@ export const resumeReview = async (req, res) => {
       });
     }
 
-    // ✅ Safely parse PDF content
+    // ✅ Dynamically import pdf-parse (fixes ENOENT bug)
+    const { default: pdf } = await import("pdf-parse");
+
+    // ✅ Parse uploaded file only (no internal test PDF)
     const dataBuffer = fs.readFileSync(tempFilePath);
     const pdfData = await pdf(dataBuffer);
 
     if (!pdfData.text?.trim()) {
-      throw new Error("Could not extract text from PDF. It might be a scanned image.");
+      throw new Error("Could not extract text from PDF. File might be scanned.");
     }
 
-    // ✅ Build prompt for AI
     const prompt = `
 You are a professional career advisor.
 Review this resume and give detailed, structured, and constructive feedback.
@@ -354,7 +348,6 @@ Resume Content:
 ${pdfData.text}
 `;
 
-    // ✅ Call Gemini API
     const response = await AI.chat.completions.create({
       model: "gemini-2.0-flash",
       messages: [{ role: "user", content: prompt }],
@@ -362,21 +355,16 @@ ${pdfData.text}
       max_tokens: 1500,
     });
 
-    const content = response.choices?.[0]?.message?.content || "No review generated.";
+    const content =
+      response.choices?.[0]?.message?.content || "No review generated.";
 
-    // ✅ Save in DB
     const [newCreation] = await sql`
       INSERT INTO creations (user_id, prompt, content, type)
       VALUES (${userId}, 'Resume Review', ${content}, 'resume-review')
       RETURNING *;
     `;
 
-    // ✅ Clean up temp file (important for Vercel)
-    if (fs.existsSync(tempFilePath)) {
-      fs.unlinkSync(tempFilePath);
-      console.log("🧹 Temp file deleted successfully");
-    }
-
+    fs.unlinkSync(tempFilePath);
     return res.json({
       success: true,
       content,
@@ -385,15 +373,7 @@ ${pdfData.text}
     });
   } catch (error) {
     console.error("resumeReview Error:", error.message);
-
-    if (tempFilePath && fs.existsSync(tempFilePath)) {
-      fs.unlinkSync(tempFilePath);
-      console.log("🧹 Temp file deleted after error");
-    }
-
-    return res.json({
-      success: false,
-      message: error.message,
-    });
+    if (tempFilePath && fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+    return res.json({ success: false, message: error.message });
   }
 };
