@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import cors from "cors"; // ✅ import CORS
 import { resumeReview } from "../controllers/aiController.js";
 
 const router = express.Router();
@@ -67,6 +68,16 @@ const handleMulterError = (err, req, res, next) => {
     message: err.message || "File upload error",
   });
 };
+
+// ✅ Add this before routes to fix CORS & preflight
+const corsOptions = {
+  origin: ["https://quickai-techoptrack.vercel.app", "http://localhost:5173"],
+  credentials: true,
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+router.use(cors(corsOptions));
+router.options("*", cors(corsOptions)); // handle preflight
 
 // ✅ Resume Review endpoint
 router.post(
