@@ -1,10 +1,11 @@
-import { FileText, Sparkles } from 'lucide-react';
-import React, { useState } from 'react';
+import { FileText, Sparkles } from "lucide-react";
+import React, { useState } from "react";
 import axios from "axios";
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown from "react-markdown";
 
+// ✅ Ensure correct backend base URL
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 const ReviewResume = () => {
@@ -16,7 +17,7 @@ const ReviewResume = () => {
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
-    
+
     if (!file) {
       toast.error("Please select a PDF file first");
       return;
@@ -30,10 +31,12 @@ const ReviewResume = () => {
       const formData = new FormData();
       formData.append("resume", file);
 
+      // ✅ CORS Fix: Add withCredentials + full baseURL
       const { data } = await axios.post(
-        "/api/ai/resume-review",
+        `${import.meta.env.VITE_BASE_URL}/api/ai/resume-review`,
         formData,
         {
+          withCredentials: true, // ⬅️ critical for Clerk + CORS
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
             "Content-Type": "multipart/form-data",
@@ -41,15 +44,19 @@ const ReviewResume = () => {
         }
       );
 
-      if (data.success) {
+      if (data?.success) {
         setContent(data.content);
         toast.success("Resume reviewed successfully!");
       } else {
-        toast.error(data.message);
+        toast.error(data?.message || "Failed to review resume");
       }
     } catch (error) {
       console.error("Resume review error:", error);
-      toast.error(error.response?.data?.message || error.message || "Failed to review resume");
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Server error occurred"
+      );
     } finally {
       setLoading(false);
     }
@@ -83,7 +90,7 @@ const ReviewResume = () => {
           <Sparkles className="w-6 h-6 text-[#4A7AFF]" />
           <h1 className="text-xl font-semibold">Resume Review</h1>
         </div>
-        
+
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Upload Resume (PDF)
@@ -126,20 +133,18 @@ const ReviewResume = () => {
           <FileText className="w-5 h-5 text-[#00da57]" />
           <h1 className="text-xl font-semibold">Analysis Results</h1>
         </div>
-        
+
         {!content ? (
           <div className="flex-1 flex flex-col justify-center items-center text-center">
             <div className="text-sm flex flex-col items-center gap-4 text-gray-400">
               <FileText className="w-12 h-12 opacity-50" />
-              <p>Upload a resume and click "Review Resume" to get started</p>
+              <p>Upload a resume and click “Review Resume” to get started</p>
             </div>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto">
             <div className="prose prose-sm max-w-none">
-              <ReactMarkdown>
-                {content}
-              </ReactMarkdown>
+              <ReactMarkdown>{content}</ReactMarkdown>
             </div>
           </div>
         )}
