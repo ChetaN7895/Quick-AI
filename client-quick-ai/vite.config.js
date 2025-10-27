@@ -1,8 +1,27 @@
-import { defineConfig } from 'vite'
-import tailwindcss from '@tailwindcss/vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
+// ✅ Fully production-ready Vite config for Vercel
 export default defineConfig({
-  base: './', // ✅ crucial for correct asset loading in production
   plugins: [react(), tailwindcss()],
-})
+  base: "/", // ensures correct routing after build
+  build: {
+    outDir: "dist",
+    sourcemap: false, // disable source maps for smaller build
+    chunkSizeWarningLimit: 1000,
+    minify: "esbuild", // fast + efficient minification
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom"],
+        },
+      },
+    },
+  },
+  resolve: {
+    alias: {
+      "@": "/src",
+    },
+  },
+});
