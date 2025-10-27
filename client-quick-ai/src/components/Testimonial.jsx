@@ -13,7 +13,7 @@ const Testimonial = () => {
     {
       image:
         // "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200",
-        "../public/chetan.jpg",
+        "./chetan.jpg",
       name: "CHETAN SOLANKI",
       title: "CEO & DIRECTOR, TechOpTrack",
       content:
