@@ -8,20 +8,21 @@ import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import FormData from "form-data";
-import pdf from "pdf-parse";
+import PDFParser from "pdf2json";
 
-// ✅ Initialize paths (for safe absolute resolution)
+// ✅ Initialize paths
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ✅ Connect Cloudinary
 connectCloudinary();
 
-// ✅ Initialize Gemini (OpenAI-compatible) API
+// ✅ Initialize Gemini (OpenAI-compatible)
 const AI = new OpenAI({
   apiKey: process.env.GEMINI_API_KEY,
   baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
 });
+
 
 
 // ✅ Generate AI Article
@@ -288,7 +289,9 @@ export const removeImageObject = async (req, res) => {
 };
 
 
-// ✅ Resume Review (PDF Parsing + Gemini AI)
+/* =========================================================
+   ✅ Resume Review (using pdf2json)
+   ========================================================= */
 export const resumeReview = async (req, res) => {
   let tempFilePath = null;
 
@@ -301,10 +304,9 @@ export const resumeReview = async (req, res) => {
       return res.json({ success: false, message: "No resume file uploaded." });
     }
 
-    // ✅ Always resolve absolute path
+    // ✅ File path
     tempFilePath = path.resolve(resume.path || "");
 
-    // ✅ Ensure file actually exists
     if (!fs.existsSync(tempFilePath)) {
       return res.json({
         success: false,
@@ -312,6 +314,7 @@ export const resumeReview = async (req, res) => {
       });
     }
 
+    // ✅ Access control
     if (plan !== "premium") {
       fs.unlinkSync(tempFilePath);
       return res.json({
@@ -320,6 +323,7 @@ export const resumeReview = async (req, res) => {
       });
     }
 
+    // ✅ File size check
     if (resume.size > 5 * 1024 * 1024) {
       fs.unlinkSync(tempFilePath);
       return res.json({
@@ -328,24 +332,45 @@ export const resumeReview = async (req, res) => {
       });
     }
 
-    // ✅ Dynamically import pdf-parse (fixes ENOENT bug)
-    const { default: pdf } = await import("pdf-parse");
+    // ✅ Extract text using pdf2json
+    const pdfParser = new PDFParser();
+    const pdfData = await new Promise((resolve, reject) => {
+      pdfParser.on("pdfParser_dataError", (err) => reject(err.parserError));
+      pdfParser.on("pdfParser_dataReady", (pdfData) => {
+        let extractedText = "";
+        pdfData.Pages.forEach((page) => {
+          page.Texts.forEach((text) => {
+            text.R.forEach((t) => {
+              extractedText += decodeURIComponent(t.T) + " ";
+            });
+          });
+        });
+        resolve(extractedText.trim());
+      });
+      pdfParser.loadPDF(tempFilePath);
+    });
 
-    // ✅ Parse uploaded file only (no internal test PDF)
-    const dataBuffer = fs.readFileSync(tempFilePath);
-    const pdfData = await pdf(dataBuffer);
+    // ✅ Delete file after parsing
+    fs.unlinkSync(tempFilePath);
 
-    if (!pdfData.text?.trim()) {
-      throw new Error("Could not extract text from PDF. File might be scanned.");
+    if (!pdfData || pdfData.length < 20) {
+      throw new Error("Could not extract text from PDF. File may be scanned or empty.");
     }
 
+    // ✅ Prompt for Gemini
     const prompt = `
 You are a professional career advisor.
-Review this resume and give detailed, structured, and constructive feedback.
-Highlight strengths, weaknesses, and improvement tips for better hiring impact.
+Analyze the following resume and provide structured, constructive feedback.
+
+Include:
+- Strengths
+- Weaknesses
+- Missing skills or improvements
+- Suggestions for clarity, structure, and impact
+- Recruiter perspective summary
 
 Resume Content:
-${pdfData.text}
+${pdfData}
 `;
 
     const response = await AI.chat.completions.create({
@@ -358,13 +383,13 @@ ${pdfData.text}
     const content =
       response.choices?.[0]?.message?.content || "No review generated.";
 
+    // ✅ Save result to DB
     const [newCreation] = await sql`
       INSERT INTO creations (user_id, prompt, content, type)
       VALUES (${userId}, 'Resume Review', ${content}, 'resume-review')
       RETURNING *;
     `;
 
-    fs.unlinkSync(tempFilePath);
     return res.json({
       success: true,
       content,
