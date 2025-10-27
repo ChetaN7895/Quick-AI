@@ -1,14 +1,16 @@
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
-import aiRouter from "./routes/aiRoutes.js";
 import { clerkMiddleware, requireAuth } from "@clerk/express";
 import connectCloudinary from "./config/cloudinary.js";
+import aiRouter from "./routes/aiRoutes.js";
 import userRouter from "./routes/userRoutes.js";
+import path from "path";
+import { fileURLToPath } from "url";
+import serverless from "serverless-http";
 
 const app = express();
 
-// ✅ Wrap startup logic to avoid top-level await
 async function startServer() {
   try {
     await connectCloudinary();
@@ -16,7 +18,7 @@ async function startServer() {
 
     const allowedOrigins = [
       "http://localhost:5173",
-      "https://quick-ai.vercel.app"
+      "https://quick-ai.vercel.app",
     ];
 
     app.use(
@@ -30,25 +32,39 @@ async function startServer() {
     app.use(express.json());
     app.use(clerkMiddleware());
 
-    // Public routes
+    app.get("/_health", (req, res) =>
+      res.status(200).json({ status: "ok", time: Date.now() })
+    );
+
     app.get("/", (req, res) =>
       res.send("🚀 Quick-AI Server is Live (Vercel + Local)")
     );
-    app.get("/favicon.ico", (req, res) => res.status(204).end());
 
-    // Protected routes
     app.use("/api/ai", requireAuth(), aiRouter);
     app.use("/api/user", requireAuth(), userRouter);
 
-    // Error handler
+    // --- Serve frontend build if included ---
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const clientDist = path.join(__dirname, "../client-quick-ai/dist");
+
+    if (process.env.NODE_ENV === "production") {
+      app.use(express.static(clientDist, { maxAge: "1d" }));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(clientDist, "index.html"));
+      });
+    }
+
+    // Global error handler
     app.use((err, req, res, next) => {
       console.error("❌ Server Error:", err);
-      res
-        .status(500)
-        .json({ message: "Internal Server Error", error: err.message });
+      res.status(500).json({
+        message: "Internal Server Error",
+        error: err.message,
+      });
     });
 
-    // Run locally only
+    // ✅ Local only
     if (process.env.VERCEL !== "1") {
       const PORT = process.env.PORT || 3000;
       app.listen(PORT, () =>
@@ -62,4 +78,6 @@ async function startServer() {
 
 startServer();
 
+// ✅ Export handler for Vercel serverless
+export const handler = serverless(app);
 export default app;
