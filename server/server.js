@@ -16,38 +16,34 @@ async function startServer() {
     await connectCloudinary();
     console.log("☁️ Connected to Cloudinary");
 
-    // ✅ Allowed origins (no trailing slashes)
     const allowedOrigins = [
       "http://localhost:5173",
       "https://quickai-techoptrack.vercel.app"
     ];
 
-    // ✅ Handle preflight requests globally
-    app.options("*", cors());
+    // ✅ Unified CORS middleware
+    const corsOptions = {
+      origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error(`CORS not allowed for origin: ${origin}`));
+        }
+      },
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    };
 
-    // ✅ CORS middleware
-    app.use(
-      cors({
-        origin: function (origin, callback) {
-          if (!origin) return callback(null, true); // allow server-to-server or curl
-          if (!allowedOrigins.includes(origin)) {
-            return callback(
-              new Error(`CORS policy does not allow access from origin: ${origin}`),
-              false
-            );
-          }
-          return callback(null, true);
-        },
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-      })
-    );
+    // ✅ Apply CORS globally (no * versions)
+    app.use(cors(corsOptions));
+    app.options("*", cors(corsOptions)); // handles preflight correctly
 
     app.use(express.json());
     app.use(clerkMiddleware());
 
-    // ✅ Health check endpoint
+    // ✅ Health check
     app.get("/_health", (req, res) =>
       res.status(200).json({ status: "ok", time: Date.now() })
     );
@@ -56,9 +52,7 @@ async function startServer() {
       res.send("🚀 Quick-AI Server is Live (Vercel + Local)")
     );
 
-    // ✅ AI and User routes
-    // Allow OPTIONS preflight without auth
-    app.options("/api/*", cors());
+    // ✅ API routes (still protected)
     app.use("/api/ai", requireAuth(), aiRouter);
     app.use("/api/user", requireAuth(), userRouter);
 
@@ -83,7 +77,6 @@ async function startServer() {
       });
     });
 
-    // ✅ Local dev only
     if (process.env.VERCEL !== "1") {
       const PORT = process.env.PORT || 3000;
       app.listen(PORT, () =>
@@ -97,6 +90,5 @@ async function startServer() {
 
 startServer();
 
-// ✅ Export handler for Vercel serverless
 export const handler = serverless(app);
 export default app;
