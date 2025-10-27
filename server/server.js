@@ -16,22 +16,38 @@ async function startServer() {
     await connectCloudinary();
     console.log("☁️ Connected to Cloudinary");
 
+    // ✅ Allowed origins (no trailing slashes)
     const allowedOrigins = [
       "http://localhost:5173",
-      "https://quickai-techoptrack.vercel.app/",
+      "https://quickai-techoptrack.vercel.app"
     ];
 
+    // ✅ Handle preflight requests globally
+    app.options("*", cors());
+
+    // ✅ CORS middleware
     app.use(
       cors({
-        origin: allowedOrigins,
+        origin: function (origin, callback) {
+          if (!origin) return callback(null, true); // allow server-to-server or curl
+          if (!allowedOrigins.includes(origin)) {
+            return callback(
+              new Error(`CORS policy does not allow access from origin: ${origin}`),
+              false
+            );
+          }
+          return callback(null, true);
+        },
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
       })
     );
 
     app.use(express.json());
     app.use(clerkMiddleware());
 
+    // ✅ Health check endpoint
     app.get("/_health", (req, res) =>
       res.status(200).json({ status: "ok", time: Date.now() })
     );
@@ -40,10 +56,13 @@ async function startServer() {
       res.send("🚀 Quick-AI Server is Live (Vercel + Local)")
     );
 
+    // ✅ AI and User routes
+    // Allow OPTIONS preflight without auth
+    app.options("/api/*", cors());
     app.use("/api/ai", requireAuth(), aiRouter);
     app.use("/api/user", requireAuth(), userRouter);
 
-    // --- Serve frontend build if included ---
+    // ✅ Serve frontend if needed
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const clientDist = path.join(__dirname, "../client-quick-ai/dist");
@@ -55,7 +74,7 @@ async function startServer() {
       });
     }
 
-    // Global error handler
+    // ✅ Global error handler
     app.use((err, req, res, next) => {
       console.error("❌ Server Error:", err);
       res.status(500).json({
@@ -64,7 +83,7 @@ async function startServer() {
       });
     });
 
-    // ✅ Local only
+    // ✅ Local dev only
     if (process.env.VERCEL !== "1") {
       const PORT = process.env.PORT || 3000;
       app.listen(PORT, () =>
