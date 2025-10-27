@@ -16,15 +16,16 @@ async function startServer() {
     await connectCloudinary();
     console.log("☁️ Connected to Cloudinary");
 
+    // ✅ Allowed origins (no trailing slashes)
     const allowedOrigins = [
       "http://localhost:5173",
-      "https://quickai-techoptrack.vercel.app"
+      "https://quickai-techoptrack.vercel.app",
     ];
 
-    // ✅ Unified CORS middleware
+    // ✅ CORS options
     const corsOptions = {
       origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
+        if (!origin) return callback(null, true); // allow Postman or curl
         if (allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
@@ -36,39 +37,45 @@ async function startServer() {
       allowedHeaders: ["Content-Type", "Authorization"],
     };
 
-    // ✅ Apply CORS globally (no * versions)
+    // ✅ Apply CORS globally (must come before routes)
     app.use(cors(corsOptions));
-    app.options("*", cors(corsOptions)); // handles preflight correctly
+    app.options("*", cors(corsOptions)); // handle all preflight requests
+    app.options("/api/*", cors(corsOptions)); // specifically for API routes
 
+    // ✅ Parse JSON
     app.use(express.json());
+
+    // ✅ Clerk middleware for auth context
     app.use(clerkMiddleware());
 
-    // ✅ Health check
+    // ✅ Health check endpoint
     app.get("/_health", (req, res) =>
       res.status(200).json({ status: "ok", time: Date.now() })
     );
 
+    // ✅ Basic test route
     app.get("/", (req, res) =>
       res.send("🚀 Quick-AI Server is Live (Vercel + Local)")
     );
 
-    // ✅ API routes (still protected)
-    app.use("/api/ai", requireAuth(), aiRouter);
-    app.use("/api/user", requireAuth(), userRouter);
+    // ✅ API routes (CORS first, then auth)
+    app.use("/api/ai", cors(corsOptions), requireAuth(), aiRouter);
+    app.use("/api/user", cors(corsOptions), requireAuth(), userRouter);
 
-    // ✅ Serve frontend if needed
+    // ✅ Serve frontend in production
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const clientDist = path.join(__dirname, "../client-quick-ai/dist");
 
     if (process.env.NODE_ENV === "production") {
       app.use(express.static(clientDist, { maxAge: "1d" }));
+
       app.get("*", (req, res) => {
         res.sendFile(path.join(clientDist, "index.html"));
       });
     }
 
-    // ✅ Global error handler
+    // ✅ Global error handler (must be last)
     app.use((err, req, res, next) => {
       console.error("❌ Server Error:", err);
       res.status(500).json({
@@ -77,6 +84,7 @@ async function startServer() {
       });
     });
 
+    // ✅ Run locally if not in Vercel
     if (process.env.VERCEL !== "1") {
       const PORT = process.env.PORT || 3000;
       app.listen(PORT, () =>
@@ -90,5 +98,6 @@ async function startServer() {
 
 startServer();
 
+// ✅ Export handler for Vercel serverless
 export const handler = serverless(app);
 export default app;
