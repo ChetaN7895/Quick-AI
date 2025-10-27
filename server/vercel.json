@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "server.js": {
-      "runtime": "@vercel/node@3"
+      "runtime": "@vercel/node@3.0.0"
     }
   },
   "routes": [
@@ -15,3 +15,4 @@
     "NODE_ENV": "production"
   }
 }
+
