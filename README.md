@@ -2,7 +2,7 @@ FullStack Live Code : https://quickai-techoptrack.vercel.app/
 
 ## 🚀 Quick AI SaaS Web App: Your All-in-One Content Powerhouse
 
-Buy Me A Coffee : https://buymeacoffee.com/chetansolanki
+<a href="https://buymeacoffee.com/chetansolanki" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a> 
 
 Quick AI is a cutting-edge, full-stack Software as a Service (SaaS) application designed to eliminate **tool fragmentation** and **creative block** for content creators, marketers, and developers. [cite_start]By consolidating multiple premium Generative AI capabilities (text, image, and editing) into a single, intuitive platform, Quick AI cuts content creation time and cost by up to 70%[cite: 55].
 
@@ -130,9 +130,9 @@ The Quick AI platform is designed for continuous evolution, with the following p
 
 **Chetan Solanki** 
 
-<a href="[https://www.buymeacoffee.com/gbraad](https://buymeacoffee.com/chetansolanki)" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a> 
+<a href="https://buymeacoffee.com/chetansolanki" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a> 
 
 
 **Live Demo:** 🌐 [https://quickai-techoptrack.vercel.app](https://quickai-techoptrack.vercel.app) 
 
-[cite_start]**GitHub Repository:** 📂 [https://github.com/ChetaN7895/Quick-AI](https://github.com/ChetaN7895/Quick-AI) [cite: 2462]
+[cite_start]**GitHub Repository:** 📂 [https://github.com/ChetaN7895/Quick-AI](https://github.com/ChetaN7895/Quick-AI) 
