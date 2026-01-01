@@ -35,7 +35,7 @@ const Hero = () => {
           Start creating now
         </button>
         <a
-          href="https://www.youtube.com/watch?v=y9FXvTuoHwQ&t=290s" // 👈 replace with your real link
+          href="https://www.youtube.com/@TechOpTrack" // 👈 replace with your real link
           target="_blank"
           rel="noopener noreferrer"
           className="bg-white px-10 py-3 rounded-lg border border-purple-300 hover:scale-102 active:scale-95 transition cursor-pointer inline-block text-black no-underline"
